@@ -98,6 +98,9 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.textContent = "Failed to sign up. Please try again.";
       messageDiv.className = "error";
       messageDiv.classList.remove("hidden");
+      setTimeout(() => {
+        messageDiv.classList.add("hidden");
+      }, 5000);
       console.error("Error signing up:", error);
     }
   });
