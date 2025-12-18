@@ -20,14 +20,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
-        // Build participants list HTML
+        // Build participants list HTML with delete icon and no bullets
         let participantsHTML = "";
         if (details.participants.length > 0) {
           participantsHTML = `
             <div class="participants-section">
               <strong>Participants:</strong>
-              <ul class="participants-list">
-                ${details.participants.map(email => `<li>${email}</li>`).join("")}
+              <ul class="participants-list" style="list-style-type: none; margin: 0; padding: 0;">
+                ${details.participants.map(email => `
+                  <li style="display: flex; align-items: center;">
+                    <span>${email}</span>
+                    <span title="Unregister" style="cursor:pointer;margin-left:8px;color:#c62828;font-size:18px;" onclick="window.unregisterParticipant && window.unregisterParticipant('${name}','${email}')">&#128465;</span>
+                  </li>
+                `).join("")}
               </ul>
             </div>
           `;
@@ -39,6 +44,25 @@ document.addEventListener("DOMContentLoaded", () => {
             </div>
           `;
         }
+// Unregister participant function (global for inline onclick)
+window.unregisterParticipant = async function(activity, email) {
+  if (!confirm(`Unregister ${email} from ${activity}?`)) return;
+  try {
+    const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`, {
+      method: "POST"
+    });
+    const result = await response.json();
+    if (response.ok && result.success) {
+      // Refresh activities list
+      document.getElementById("activity").innerHTML = '<option value="">-- Select an activity --</option>';
+      fetchActivities();
+    } else {
+      alert(result.detail || "Failed to unregister participant.");
+    }
+  } catch (error) {
+    alert("Failed to unregister participant.");
+  }
+};
 
         activityCard.innerHTML = `
           <h4>${name}</h4>
@@ -83,6 +107,9 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities list to show new participant
+        document.getElementById("activity").innerHTML = '<option value="">-- Select an activity --</option>';
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
