@@ -20,11 +20,56 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const spotsLeft = details.max_participants - details.participants.length;
 
+        // Build participants list HTML with delete icon and no bullets
+        let participantsHTML = "";
+        if (details.participants.length > 0) {
+          participantsHTML = `
+            <div class="participants-section">
+              <strong>Participants:</strong>
+              <ul class="participants-list" style="list-style-type: none; margin: 0; padding: 0;">
+                ${details.participants.map(email => `
+                  <li style="display: flex; align-items: center;">
+                    <span>${email}</span>
+                    <span title="Unregister" style="cursor:pointer;margin-left:8px;color:#c62828;font-size:18px;" onclick="window.unregisterParticipant && window.unregisterParticipant('${name}','${email}')">&#128465;</span>
+                  </li>
+                `).join("")}
+              </ul>
+            </div>
+          `;
+        } else {
+          participantsHTML = `
+            <div class="participants-section">
+              <strong>Participants:</strong>
+              <span class="no-participants">No participants yet.</span>
+            </div>
+          `;
+        }
+// Unregister participant function (global for inline onclick)
+window.unregisterParticipant = async function(activity, email) {
+  if (!confirm(`Unregister ${email} from ${activity}?`)) return;
+  try {
+    const response = await fetch(`/activities/${encodeURIComponent(activity)}/unregister?email=${encodeURIComponent(email)}`, {
+      method: "POST"
+    });
+    const result = await response.json();
+    if (response.ok && result.success) {
+      // Refresh activities list
+      document.getElementById("activity").innerHTML = '<option value="">-- Select an activity --</option>';
+      fetchActivities();
+    } else {
+      alert(result.detail || "Failed to unregister participant.");
+    }
+  } catch (error) {
+    alert("Failed to unregister participant.");
+  }
+};
+
         activityCard.innerHTML = `
           <h4>${name}</h4>
           <p>${details.description}</p>
           <p><strong>Schedule:</strong> ${details.schedule}</p>
           <p><strong>Availability:</strong> ${spotsLeft} spots left</p>
+          ${participantsHTML}
         `;
 
         activitiesList.appendChild(activityCard);
@@ -62,6 +107,9 @@ document.addEventListener("DOMContentLoaded", () => {
         messageDiv.textContent = result.message;
         messageDiv.className = "success";
         signupForm.reset();
+        // Refresh activities list to show new participant
+        document.getElementById("activity").innerHTML = '<option value="">-- Select an activity --</option>';
+        fetchActivities();
       } else {
         messageDiv.textContent = result.detail || "An error occurred";
         messageDiv.className = "error";
@@ -77,6 +125,9 @@ document.addEventListener("DOMContentLoaded", () => {
       messageDiv.textContent = "Failed to sign up. Please try again.";
       messageDiv.className = "error";
       messageDiv.classList.remove("hidden");
+      setTimeout(() => {
+        messageDiv.classList.add("hidden");
+      }, 5000);
       console.error("Error signing up:", error);
     }
   });
